@@ -125,6 +125,15 @@ typedef  int          INT4;                                                    /
 
 /*
 ------------------------------------------------------
+   Macros to identify upstream & downstream nodes of 
+   Link[x] under the current flow
+------------------------------------------------------
+*/
+#define   UP_NODE(x)   ( (FlowDir[(x)]=='+') ? Link[(x)].N1 : Link[(x)].N2 )
+#define   DOWN_NODE(x) ( (FlowDir[(x)]=='+') ? Link[(x)].N2 : Link[(x)].N1 )
+
+/*
+------------------------------------------------------
    Global Data Structures                             
 ------------------------------------------------------
 */

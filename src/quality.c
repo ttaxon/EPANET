@@ -64,11 +64,8 @@ AUTHOR:     L. Rossman
 #include "mempool.h"
 
 /*
-** Macros to identify upstream & downstream nodes of a link
-** under the current flow and to compute link volume
+** Macro to compute link volume
 */
-#define   UP_NODE(x)   ( (FlowDir[(x)]=='+') ? Link[(x)].N1 : Link[(x)].N2 )
-#define   DOWN_NODE(x) ( (FlowDir[(x)]=='+') ? Link[(x)].N2 : Link[(x)].N1 )
 #define   LINKVOL(k)   ( 0.785398*Link[(k)].Len*SQR(Link[(k)].Diam) )
 
 Pseg      FreeSeg;              /* Pointer to unused segment               */
