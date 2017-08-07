@@ -153,6 +153,7 @@ void  setdefaults()
    CheckFreq = CHECKFREQ;
    MaxCheck  = MAXCHECK;
    DampLimit = DAMPLIMIT;                                                      //(2.00.12 - LR)
+   transportMethod = TM_ORIGINAL;
 }                       /*  End of setdefaults  */
 
 

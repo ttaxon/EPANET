@@ -1505,6 +1505,7 @@ int  optionchoice(int n)
 **    VERIFY              filename                               
 **    UNBALANCED          STOP/CONTINUE {Niter}
 **    PATTERN             id
+**    TRANSPORT_MODE      ORIGINAL/FLOW_BASED
 **--------------------------------------------------------------
 */
 {
@@ -1605,6 +1606,12 @@ int  optionchoice(int n)
    {
       if (n < 1) return(0);
       strncpy(DefPatID,Tok[1],MAXID);
+   } else if (match(Tok[0],w_TRANSPORT))
+   {
+      if (n < 1) return(0);
+	  if(match(Tok[1],w_TRANSORIG)) transportMethod=TM_ORIGINAL;
+	  else if (match(Tok[1],w_TRANSFLOW)) transportMethod=TM_FLOW;
+	  else return(201);
    }
    else return(-1);
    return(0);

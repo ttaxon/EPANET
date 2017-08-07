@@ -65,32 +65,40 @@
 
 /// Node property codes
 typedef enum {
-  EN_ELEVATION    = 0, /**< Node Elevation */
-  EN_BASEDEMAND   = 1, /**< Node Base Demand, from last demand category */
-  EN_PATTERN      = 2, /**< Node Demand Pattern */
-  EN_EMITTER      = 3, /**< Node Emitter Coefficient */
-  EN_INITQUAL     = 4, /**< Node initial quality */
-  EN_SOURCEQUAL   = 5, /**< Node source quality */
-  EN_SOURCEPAT    = 6, /**< Node source pattern index */
-  EN_SOURCETYPE   = 7, /**< Node source type */
-  EN_TANKLEVEL    = 8, /**< Tank Level */
-  EN_DEMAND       = 9, /**< Node current simulated demand */
-  EN_HEAD         = 10, /**< Node Head value */
-  EN_PRESSURE     = 11, /**< Node pressure value */
-  EN_QUALITY      = 12, /**< Node quality value */
-  EN_SOURCEMASS   = 13, /**< Node source mass value */
-  EN_INITVOLUME   = 14, /**< Tank or Reservoir initial volume */
-  EN_MIXMODEL     = 15, /**< Tank mixing model */
-  EN_MIXZONEVOL   = 16, /**< Tank mixing zone volume  */
-  EN_TANKDIAM     = 17, /**< Tank diameter  */
-  EN_MINVOLUME    = 18, /**< Tank minimum volume  */
-  EN_VOLCURVE     = 19, /**< Tank volume curve index  */
-  EN_MINLEVEL     = 20, /**< Tank minimum level  */
-  EN_MAXLEVEL     = 21, /**< Tank maximum level  */
-  EN_MIXFRACTION  = 22, /**< Tank mixing fraction  */
-  EN_TANK_KBULK   = 23, /**< Tank bulk decay coefficient  */
-  EN_TANKVOLUME   = 24, /**< Tank current volume  */
-  EN_MAXVOLUME    = 25  /**< Tank maximum volume  */
+  EN_ELEVATION     = 0, /**< Node Elevation */
+  EN_BASEDEMAND    = 1, /**< Node Base Demand, from last demand category */
+  EN_PATTERN       = 2, /**< Node Demand Pattern */
+  EN_EMITTER       = 3, /**< Node Emitter Coefficient */
+  EN_INITQUAL      = 4, /**< Node initial quality */
+  EN_SOURCEQUAL    = 5, /**< Node source quality */
+  EN_SOURCEPAT     = 6, /**< Node source pattern index */
+  EN_SOURCETYPE    = 7, /**< Node source type */
+  EN_TANKLEVEL     = 8, /**< Tank Level */
+  EN_DEMAND        = 9, /**< Node current simulated demand */
+  EN_HEAD          = 10, /**< Node Head value */
+  EN_PRESSURE      = 11, /**< Node pressure value */
+  EN_QUALITY       = 12, /**< Node quality value */
+  EN_SOURCEMASS    = 13, /**< Node source mass value */
+  EN_INITVOLUME    = 14, /**< Tank or Reservoir initial volume */
+  EN_MIXMODEL      = 15, /**< Tank mixing model */
+  EN_MIXZONEVOL    = 16, /**< Tank mixing zone volume  */
+  EN_TANKDIAM      = 17, /**< Tank diameter  */
+  EN_MINVOLUME     = 18, /**< Tank minimum volume  */
+  EN_VOLCURVE      = 19, /**< Tank volume curve index  */
+  EN_MINLEVEL      = 20, /**< Tank minimum level  */
+  EN_MAXLEVEL      = 21, /**< Tank maximum level  */
+  EN_MIXFRACTION   = 22, /**< Tank mixing fraction  */
+  EN_TANK_KBULK    = 23, /**< Tank bulk decay coefficient  */
+  EN_TANKVOLUME    = 24, /**< Tank current volume  */
+  EN_MAXVOLUME     = 25,  /**< Tank maximum volume  */
+  EN_AVG_QUALITY   = 26, /**< Node quality value averaged over reporting interval(Flow Transport method only)*/
+  EN_MASSADDED     = 27,
+  EN_MASSNOTMOVED  = 28,
+  EN_MASSREMOVED   = 29,
+  EN_TANKMASS      = 30,
+  EN_MASSNOOUTFLOW = 31,
+  EN_MASSNEGTANKVOL= 32
+  
 } EN_NodeProperty;
 
 /// Link property codes
@@ -110,7 +118,9 @@ typedef enum {
   EN_SETTING      = 12,
   EN_ENERGY       = 13,
   EN_LINKQUAL     = 14,
-  EN_LINKPATTERN  = 15
+  EN_LINKPATTERN  = 15,
+  EN_LINKMASS     = 16
+
 } EN_LinkProperty;
 
 /// Time parameter codes

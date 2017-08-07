@@ -66,6 +66,9 @@ EXTERN char     Msg[MAXMSG+1],         /* Text of output message       */
                 SaveQflag,             /* Quality results saved flag   */
                 Saveflag,              /* General purpose save flag    */
                 Coordflag;             /* Load coordinates flag        */
+
+EXTERN TransportMode transportMethod;  /* WQ transport method          */
+
 EXTERN int      MaxNodes,              /* Node count from input file   */
                 MaxLinks,              /* Link count from input file   */
                 MaxJuncs,              /* Junction count               */
@@ -147,12 +150,23 @@ EXTERN char           *LinkStatus,           /* Link status                  */
                 *OldStat;              /* Previous link/tank status    */
 EXTERN double         *NodeDemand,           /* Node actual demand           */
                 *NodeQual,             /* Node actual quality          */
+                *AvgNodeQual,          /* Average Node quality for WQ step */
+                *Mass,                 /* Mass removed at node for WQ step */
                 *E,                    /* Emitter flows                */
                 *LinkSetting,          /* Link settings                */
                 *Q,                    /* Link flows                   */
                 *PipeRateCoeff,        /* Pipe reaction rate           */
                 *X,                    /* General purpose array        */
                 *TempQual;             /* General purpose array for water quality        */
+
+EXTERN double   *MB_MassAdded,         /* Mass added to the system in the current WQ step     */
+				*MB_MassMoved,         /* Mass that was actually moved from the node          */
+                *MB_MassRemoved,       /* Mass removed from the system in the current WQ step */
+                *MB_MassInTanks,       /* Mass in the tanks at the current time               */
+                *MB_MassInPipes,       /* Mass in all the links at the current time           */
+				*MB_MassNegTankVol,    /* Mass "lost" due to negative tank volume */
+				*MB_MassNoOutflow;     /* Mass "lost" due to node with no outflow */
+
 EXTERN double   *NodeHead;             /* Node heads                   */
 EXTERN double *QTankVolumes;
 EXTERN double *QLinkFlow;

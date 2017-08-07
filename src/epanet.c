@@ -178,7 +178,7 @@ int DLLEXPORT ENepanet(char *f1, char *f2, char *f3, void (*pviewprog) (char *))
     ERRCODE(ENopen(f1,f2,f3));
     if (Hydflag != USE) ERRCODE(ENsolveH());
     ERRCODE(ENsolveQ());
-    ERRCODE(ENreport());
+	ERRCODE(ENreport());
     ENclose();
     return(MAX(errcode, Warnflag) );
 }
@@ -1203,6 +1203,10 @@ int DLLEXPORT ENgetnodevalue(int index, int code, EN_API_FLOAT_TYPE *value)
          v = NodeQual[index]*Ucf[QUALITY];
          break;
 
+      case EN_AVG_QUALITY:
+         v = AvgNodeQual[index]*Ucf[QUALITY];
+         break;
+
 /*** New parameters added for retrieval begins here   ***/                     //(2.00.12 - LR)
 /*** (Thanks to Nicolas Basile of Ecole Polytechnique ***/
 /***  de Montreal for suggesting some of these.)      ***/
@@ -1264,6 +1268,32 @@ int DLLEXPORT ENgetnodevalue(int index, int code, EN_API_FLOAT_TYPE *value)
       case EN_TANKVOLUME:
          if (index <= Njuncs) return(251);
          v = tankvolume(index-Njuncs, NodeHead[index])*Ucf[VOLUME];
+         break;
+
+	  case EN_MASSADDED:
+		 v = MB_MassAdded[index];
+         break;
+
+	  case EN_MASSNOTMOVED:
+		 v = MB_MassAdded[index]-MB_MassMoved[index];
+         break;
+
+	  case EN_MASSREMOVED:
+		 v = MB_MassRemoved[index];
+         break;
+
+	  case EN_MASSNOOUTFLOW:
+		 v = MB_MassNoOutflow[index];
+         break;
+
+	  case EN_MASSNEGTANKVOL:
+         if (index <= Njuncs) return(251);
+		 v = MB_MassNegTankVol[index-Njuncs];
+         break;
+
+	  case EN_TANKMASS:
+         if (index <= Njuncs) return(251);
+		 v = Tank[index-Njuncs].M;
          break;
 
       default: return(251);
@@ -1458,7 +1488,11 @@ int DLLEXPORT ENgetlinkvalue(int index, int code, EN_API_FLOAT_TYPE *value)
          if (Link[index].Type == PUMP)
             v = (double)Pump[PUMPINDEX(index)].Upat;
          break;
-         
+
+	  case EN_LINKMASS:
+		 v = MB_MassInPipes[index];
+         break;
+
       default: return(251);
    }
    *value = (EN_API_FLOAT_TYPE)v;

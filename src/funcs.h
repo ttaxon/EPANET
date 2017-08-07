@@ -244,12 +244,12 @@ void    reorientsegs(void);               /* Re-orients WQ segments     */
 void    updatesegs(long);                 /* Updates quality in segments*/
 void    removesegs(int);                  /* Removes a WQ segment       */
 void    addseg(int,double,double);        /* Adds a WQ segment to pipe  */
-Pseg    createseg(double v, double c);    /* create a new WQ segment    */
-void    insertseg(int k, Pseg seg);       /* Insert a WQ segment to pipe*/
-void    accumulate(long);                 /* Sums mass flow into node   */
+Pseg    createseg(double v, double c);
+void    insertseg(int k, Pseg seg);
+void    accumulate(long, long);           /* Sums mass flow into node   */
 void    updatenodes(long);                /* Updates WQ at nodes        */
 void    sourceinput(long);                /* Computes source inputs     */
-void    release(long);                    /* Releases mass from nodes   */
+void    release(long, long);              /* Releases mass from nodes   */
 void    updatetanks(long);                /* Updates WQ in tanks        */
 void    updatesourcenodes(long);          /* Updates WQ at source nodes */
 void    tankmix1(int, long);              /* Complete mix tank model    */

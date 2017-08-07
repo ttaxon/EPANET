@@ -177,6 +177,10 @@ AUTHOR:     L. Rossman
 #define   w_STOP        "STOP"
 #define   w_CONTINUE    "CONT"
 
+#define   w_TRANSPORT   "TRANSPORT_MODE"
+#define   w_TRANSORIG   "ORIGINAL"
+#define   w_TRANSFLOW   "FLOW_BASED"
+
 #define   w_RULE        "RULE"
 #define   w_IF          "IF"
 #define   w_AND         "AND"

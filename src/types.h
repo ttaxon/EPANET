@@ -244,6 +244,7 @@ typedef struct     /* TANK OBJECT */
    double Kb;       /* Reaction coeff. (1/days) */
    double V;        /* Tank volume              */
    double C;        /* Concentration            */
+   double M;        /* Mass of contaminant in tank */
    int    Pat;      /* Fixed grade time pattern */
    int    Vcurve;   /* Vol.- elev. curve index  */
    char   MixModel; /* Type of mixing model     */
@@ -471,4 +472,7 @@ enum HdrType                    /* Type of table heading   */
                   NODEHDR,      /*  Node Results           */
                   LINKHDR};     /*  Link Results           */
 
+typedef enum {
+                  TM_ORIGINAL,
+				  TM_FLOW} TransportMode;
 #endif

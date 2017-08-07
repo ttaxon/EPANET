@@ -46,7 +46,6 @@ AUTHOR:     L. Rossman
 
 ******************************************************************************* 
 */
-
 #include <stdio.h>
 #include <string.h>
 #ifndef __APPLE__
@@ -62,6 +61,9 @@ AUTHOR:     L. Rossman
 #define  EXTERN  extern
 #include "vars.h"
 #include "mempool.h"
+#include "transport.h"
+#define QDBG_EXT extern
+#include "quality_dbg.h"
 
 /*
 ** Macro to compute link volume
@@ -121,6 +123,10 @@ int  openqual()
    ERRCODE(MEMCHECK(FlowDir));
    ERRCODE(MEMCHECK(VolIn));
    ERRCODE(MEMCHECK(MassIn));
+   if(transportMethod==TM_FLOW) {
+	   ftOpenMoveSegs();
+   }
+
    return(errcode);
 }
 
@@ -146,12 +152,17 @@ void  initqual()
 
    /* Initialize quality, tank volumes, & source mass flows */
    for (i=1; i<=Nnodes; i++) NodeQual[i] = Node[i].C0;
-   for (i=1; i<=Ntanks; i++) Tank[i].C = Node[Tank[i].Node].C0;
-   for (i=1; i<=Ntanks; i++) Tank[i].V = Tank[i].V0;
+   for (i=1; i<=Ntanks; i++) {
+	   Tank[i].C = Node[Tank[i].Node].C0;
+	   Tank[i].V = Tank[i].V0;
+	   Tank[i].M = 0;
+   }
    for (i=1; i<=Nnodes; i++) {
      if (Node[i].S != NULL) Node[i].S->Smass = 0.0;
    }
-  
+   if(transportMethod==TM_FLOW) {
+	   ftInitQual();
+   }  
    QTankVolumes = calloc(Ntanks, sizeof(double)); // keep track of previous step's tank volumes.
    QLinkFlow    = calloc(Nlinks, sizeof(double)); // keep track of previous step's link flows.
   
@@ -201,7 +212,7 @@ void  initqual()
    Rtime = Rstart;
    Nperiods = 0;
    if (OpenHflag) {
-      initsegs();
+	   initsegs();
    }
 }
 
@@ -319,8 +330,15 @@ int nextqual(long *tstep)
   }
   
    /* Perform water quality routing over this time step */
-   if (Qualflag != NONE && hydstep > 0) transport(hydstep);
-
+   if (Qualflag != NONE && hydstep > 0) {
+	   if(transportMethod==TM_FLOW) {
+		   ftInitializeTransport();
+	   }
+	   transport(hydstep);
+	   if(transportMethod==TM_FLOW) {
+		   ftTransportDone();
+	   }
+   }
    /* Update current time */
    if (OutOfMemory) errcode = 101;
    if (!errcode) *tstep = hydstep;
@@ -363,6 +381,9 @@ int stepqual(long *tleft)
 */
 {  long dt, hstep, t, tstep;
    int  errcode = 0;
+   if(transportMethod==TM_FLOW) {
+	   ftInitializeTransport();
+   }
    tstep = Qstep;
    do
    {
@@ -384,8 +405,15 @@ int stepqual(long *tleft)
       tstep -= dt;
       if (OutOfMemory) errcode = 101;
    }  while (!errcode && tstep > 0);
+   if(transportMethod==TM_FLOW) {
+	   ftTransportDone();
+   }
+
    *tleft = Dur - Qtime;
-   if (!errcode && Saveflag && *tleft == 0) errcode = savefinaloutput();
+   if (!errcode && Saveflag && *tleft == 0) {
+       errcode = runqual(&t);
+       errcode &= savefinaloutput();
+   }
    return(errcode);
 }
 
@@ -400,7 +428,10 @@ int closequal()
 */
 {
    int errcode = 0;
-
+#ifdef FLOW_DBG_PRINT
+   if(fpMassInfo != NULL) { fclose(fpMassInfo); }
+   if(fpLV != NULL) { fclose(fpLV); }
+#endif
    /* Free memory pool */
    if ( SegPool )                                                              //(2.00.11 - LR)
    {                                                                           //(2.00.11 - LR)
@@ -417,6 +448,9 @@ int closequal()
    free(TempQual);
    free(QTankVolumes);
    free(QLinkFlow);
+   if(transportMethod==TM_FLOW) {
+	   ftCloseMoveSegs();
+   }
    return(errcode);
 }
 
@@ -514,7 +548,6 @@ char  setReactflag()
    return(0);
 }
 
-
 void  transport(long tstep)
 /*
 **--------------------------------------------------------------
@@ -536,16 +569,101 @@ void  transport(long tstep)
       dt = MIN(Qstep,tstep-qtime);    /* Current time step */
       qtime += dt;                    /* Update elapsed time */
       if (Reactflag) updatesegs(dt);  /* Update quality in inner link segs */
-      accumulate(dt);                 /* Accumulate flow at nodes */
+
+	  if(transportMethod==TM_ORIGINAL) {
+#ifdef FLOW_DBG_PRINT
+		  if(fpMassInfo==NULL) {
+			  char fn[256];
+			  _mkdir("massinfo");
+			  sprintf(fn,"massinfo/massinfo.txt");
+			  fpMassInfo=fopen(fn,"w");
+			  fprintf(fpMassInfo,"Desc\ttime\tlink idx\tlink id\tvol (m^3)\tc (mg/l)\tmass (mg)\tMass Lost (mg)\tMass Added (mg)\tExtra Volume (m^3)\t\tcum lost mass (mg)\tcum extra mass (mg)\tcum extra volume (m^3)\t\tcum net mass gain (m^3)\n");
+		  }
+		  if(fpLV==NULL) {
+			  char fn[256];
+			  _mkdir("linkvol");
+			  sprintf(fn,"linkvol/linkvol.txt");
+			  fpLV=fopen(fn,"w");
+			  fprintf(fpLV,"time\ti\tID\tLinkVol\tFlowVol\tnumsegs\tsegvol\tmass\tlinkvol-segvol\n");
+		  }
+		  extraMass=0;
+		  lostMass=0;
+		  extraVol=0;
+#endif
+		  memset(VolIn, 0, (Nnodes + 1)*sizeof(double));
+		  memset(MassIn, 0, (Nnodes + 1)*sizeof(double));
+
+#ifdef FLOW_DBG_PRINT
+		  writeLinkVolumes(NULL, Qtime + qtime, "01", dt);
+#endif
+#ifdef DBG_PRINT_DETAIL
+		  dbgPrintDetail(Qtime + qtime, 1, dt, NULL);
+#endif
+
+		  accumulate(dt,Qtime+qtime);                 /* Accumulate flow at nodes */
+
+#ifdef FLOW_DBG_PRINT
+		  writeLinkVolumes(NULL, Qtime + qtime, "02", dt);
+#endif
+#ifdef DBG_PRINT_DETAIL
+		  dbgPrintDetail(Qtime + qtime, 2, dt, NULL);
+#endif
+
       updatenodes(dt);                /* Update nodal quality */
+
+#ifdef FLOW_DBG_PRINT
+		  writeLinkVolumes(NULL, Qtime + qtime, "04", dt);
+#endif
+#ifdef DBG_PRINT_DETAIL
+		  dbgPrintDetail(Qtime + qtime, 4, dt, NULL);
+#endif
+
       sourceinput(dt);                /* Compute inputs from sources */
-      release(dt);                    /* Release new nodal flows */
-   }
-   updatesourcenodes(tstep);          /* Update quality at source nodes */
   
+#ifdef FLOW_DBG_PRINT
+		  writeLinkVolumes(NULL, Qtime + qtime, "05", dt);
+#endif
+#ifdef DBG_PRINT_DETAIL
+		  dbgPrintDetail(Qtime+qtime, 5, dt, X);
+#endif
+
+		  release(dt,Qtime+qtime);                    /* Release new nodal flows */
+
+#ifdef DBG_PRINT_DETAIL
+		  dbgPrintDetail(Qtime+qtime, 6, dt, NULL);
+#endif
+#ifdef DBG_PRINT_QUAL
+		  dbgPrintLinkQual(Qtime+qtime, "or");
+		  dbgPrintTankQual(Qtime+qtime, "or");
+		  dbgPrintNodeQual(Qtime+qtime, "or");
+#endif
+#ifdef FLOW_DBG_PRINT
+		  writeLinkVolumes(NULL,Qtime+qtime,"06",dt);
+		  writeLinkVolumes(fpLV,Qtime+qtime,NULL,dt);
+		  cLostMass+=lostMass;
+		  cExtraMass+=extraMass;
+		  cExtraVol+=extraVol;
+		  fprintf(fpMassInfo, "Totals\t%d\t\t\t\t\t\t%f\t%f\t%f\t\t%f\t%f\t%f\t\t%f\n", Qtime + qtime, lostMass, extraMass, extraVol, cLostMass, cExtraMass, cExtraVol, cExtraMass-cLostMass);
+		  fflush(fpMassInfo);
+#endif
+	  } else {
+	      ftMoveSegs(dt,Qtime+qtime);
+#ifdef DBG_PRINT_QUAL
+		  dbgPrintLinkQual(Qtime+qtime, "tm");
+		  dbgPrintTankQual(Qtime+qtime, "tm");
+		  dbgPrintNodeQual(Qtime+qtime, "tm");
+#endif
+	  }
+//	  printSegStats(Qtime+qtime, "after");
+   }
+   if(transportMethod==TM_ORIGINAL) {
+	   long stime=Qtime+qtime;
+	   updatesourcenodes(tstep);          /* Update quality at source nodes */
+//	   if(stime < 60 || (stime >= 1336*60 && Qtime+qtime <= 1360*60)) {
+//	  ftPrintAllLinkSegs(Qtime+qtime,"orig");
+//	   }
+   }
 }
-
-
 void  initsegs()
 /*
 **--------------------------------------------------------------
@@ -611,6 +729,8 @@ void  initsegs()
          addseg(k,v,c);
       }
    }
+   if(transportMethod == TM_FLOW)
+      ftInitSegs();
 }
 
 
@@ -658,6 +778,8 @@ void  reorientsegs()
          FlowDir[k] = newdir;
       }
    }
+   if(transportMethod == TM_FLOW)
+      ftNewHydStep();
 }
 
 
@@ -757,6 +879,9 @@ Pseg createseg(double v, double c)
         }     
     }
     seg->v = v;
+	if(c < 0) {
+		printf("seg->c < 0!\n");
+	}
     seg->c = c;
     seg->prev = NULL;
 	return seg;
@@ -785,8 +910,7 @@ void insertseg(int k, Pseg seg)
     LastSeg[k] = seg;
 }
 
-
-void accumulate(long dt)
+void accumulate(long dt,long stime)
 /*
 **-------------------------------------------------------------
 **   Input:   dt = current WQ time step
@@ -796,7 +920,7 @@ void accumulate(long dt)
 **-------------------------------------------------------------
 */
 {
-   int    i,j,k;
+   int    j,k;
    double  cseg,v,vseg;
    Pseg   seg;
 
@@ -834,7 +958,7 @@ void accumulate(long dt)
    memset(MassIn,0,(Nnodes+1)*sizeof(double));
    for (k=1; k<=Nlinks; k++)
    {
-      i = UP_NODE(k);               /* Upstream node */
+//      i = UP_NODE(k);               /* Upstream node */
       j = DOWN_NODE(k);             /* Downstream node */
       v = ABS(Q[k])*dt;             /* Flow volume */
 
@@ -869,6 +993,18 @@ void accumulate(long dt)
          /* (unless leading segment is also last segment) */
          vseg = seg->v;
          vseg = MIN(vseg,v);
+#ifdef FLOW_DBG_PRINT
+		 if (seg == LastSeg[k]) {
+			 if(v > vseg) {
+				 printf("");
+				 if(seg->c > 0) {
+					 double dv = (v - vseg) * LperFT3 / 1000;  // m^3
+					 extraMass += 1000*dv*seg->c*Ucf[QUALITY];
+					 fprintf(fpMassInfo, "ExtraMass\t%d\t%d\t%s\t%f\t%f\t%f\n", stime, k, Link[k].ID, dv, seg->c*Ucf[QUALITY], dv*seg->c*Ucf[QUALITY]*1000.0);
+				 }
+			 }
+		}
+#endif
          if (seg == LastSeg[k]) vseg = v;
 
          /* Update volume & mass entering downstream node  */
@@ -1047,7 +1183,7 @@ void sourceinput(long dt)
 }
 
 
-void release(long dt)
+void release(long dt,long stime)
 /*
 **---------------------------------------------------------
 **   Input:   dt = current WQ time step
@@ -1088,11 +1224,36 @@ void release(long dt)
          }
 
          /* Otherwise add a new seg to end of link */
-         else addseg(k,v,c);
+         else {
+#ifdef FLOW_DBG_PRINT
+			 Pseg s;
+			 double segvol=0;
+			 for(s=FirstSeg[k];s!=NULL;s=s->prev) {
+				 segvol += s->v;
+			 }
+			 if(v+segvol > LINKVOL(k)) {
+				 double dv=(v+segvol-LINKVOL(k)) * LperFT3 / 1000;  // m^3
+				 double c_mgpl = c*Ucf[QUALITY]; // mg/l
+				 extraVol+=1000*dv*c_mgpl;
+				 fprintf(fpMassInfo, "ExtraVol\t%d\t%d\t%s\t%f\t%f\t%f\n", stime, k, Link[k].ID, dv, c_mgpl, dv*c*1000);
+			 }
+#endif
+            addseg(k,v,c);
+         }
       }
 
       /* If link has no segs then add a new one. */
-      else addseg(k,LINKVOL(k),c);
+	  else {
+#ifdef FLOW_DBG_PRINT
+		  if(c>0) {
+			  double dv=(v-LINKVOL(k)) * LperFT3 / 1000;  // m^3
+			  double c_mgpl = c*Ucf[QUALITY];
+			  lostMass += 1000*dv*c_mgpl;
+			  fprintf(fpMassInfo,"Lost_Mass\t%d\t%d\t%s\t%f\t%f\t%f\n",stime,k,Link[k].ID,dv,c_mgpl,dv*c_mgpl*1000.0);
+   }
+#endif
+		  addseg(k,LINKVOL(k),c);
+	  }
    }
 }
 
@@ -1234,6 +1395,7 @@ void  tankmix1(int i, long dt)
    c = MAX(c, 0.0);
    Tank[i].C = c;
    NodeQual[n] = Tank[i].C;
+   Tank[i].M=Tank[i].C*Tank[i].V;
 }
 
 /*** Updated 10/25/00 ***/
@@ -1327,6 +1489,7 @@ void  tankmix2(int i, long dt)
    /* outflow begins to flow from */
    Tank[i].C = seg1->c;
    NodeQual[n] = Tank[i].C;
+   Tank[i].M=seg1->c*seg1->v+seg2->c*seg2->v;
 }
 
 
@@ -1366,6 +1529,7 @@ void  tankmix3(int i, long dt)
    vout = vin - vnet;
    if (vin > 0.0) cin = MassIn[n]/VolIn[n];
    else           cin = 0.0;
+   if (vin > 0.0) Tank[i].M += MassIn[n];
    Tank[i].V += vnet;
    Tank[i].V = MAX(0.0, Tank[i].V);                                            //(2.00.12 - LR)
 
@@ -1397,6 +1561,7 @@ void  tankmix3(int i, long dt)
          seg->v -= vseg;
       }
    }
+   Tank[i].M-=csum;
 
    /* Use quality withdrawn from 1st segment */
    /* to represent overall quality of tank */
@@ -1484,6 +1649,7 @@ void  tankmix4(int i, long dt)
 
       /* Update reported tank quality */
       Tank[i].C = LastSeg[k]->c;
+      Tank[i].M += MassIn[n];
    }
 
    /* If net emptying then remove last segments until vnet consumed */
@@ -1517,6 +1683,7 @@ void  tankmix4(int i, long dt)
             seg->v -= vseg;
          }
       }
+	  Tank[i].M -= csum;
       /* Reported tank quality is mixture of flow released and any inflow */
       Tank[i].C = (csum + MassIn[n])/(vsum + vin);
    }
