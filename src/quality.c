@@ -732,16 +732,14 @@ void  removesegs(int k)
     LastSeg[k] = NULL;
 }
 
-
-void  addseg(int k, double v, double c)
+Pseg createseg(double v, double c)
 /*
 **-------------------------------------------------------------
-**   Input:   k = link segment
-**            v = segment volume
+**   Input:   v = segment volume
 **            c = segment quality
 **   Output:  none
-**   Purpose: adds a segment to start of link k (i.e., upstream
-**            of current last segment).
+**   Purpose: creates a new segment with volume v and
+**            concentration c
 **-------------------------------------------------------------
 */
 {
@@ -758,12 +756,33 @@ void  addseg(int k, double v, double c)
         if (seg == NULL)
         {
            OutOfMemory = TRUE;
-           return;
+           return NULL;
         }     
     }
     seg->v = v;
     seg->c = c;
     seg->prev = NULL;
+	return seg;
+}
+
+void  addseg(int k, double v, double c)
+/*
+**-------------------------------------------------------------
+**   Input:   k = link segment
+**            v = segment volume
+**            c = segment quality
+**   Output:  none
+**   Purpose: adds a segment to start of link k (i.e., upstream
+**            of current last segment).
+**-------------------------------------------------------------
+*/
+{
+	Pseg seg = createseg(v,c);
+	insertseg(k,seg);
+    }
+
+void insertseg(int k, Pseg seg)
+        {
     if (FirstSeg[k] == NULL) FirstSeg[k] = seg;
     if (LastSeg[k] != NULL) LastSeg[k]->prev = seg;
     LastSeg[k] = seg;
