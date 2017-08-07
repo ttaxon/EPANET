@@ -203,8 +203,9 @@ void  initqual()
    Qtime = 0;
    Rtime = Rstart;
    Nperiods = 0;
-  
-  initsegs();
+   if (OpenHflag) {
+      initsegs();
+   }
 }
 
 
@@ -472,8 +473,12 @@ int  gethyd(long *hydtime, long *hydstep)
      
       /* Initialize pipe segments (at time 0) or  */
       /* else re-orient segments if flow reverses.*/
-      //if (Qtime == 0)
-      //  initsegs();
+	 if (!OpenHflag && Qtime == 0) {
+	 	// call initsegs here if we are NOT doing stepwise.  If this is
+	 	// not done, the initialization will be based off the hydraulic
+	 	// result from the end of the simulation time period.
+		 initsegs();
+	 }
       //else
      // if hydraulics are open, or if we're in sequential mode (where qtime can increase)
      if (OpenHflag || Qtime != 0) {
